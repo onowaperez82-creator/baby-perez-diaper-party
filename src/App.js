@@ -21,7 +21,22 @@ const EVENT = {
     "Come hang out, bring diapers, enjoy drinks on us, and help us celebrate Baby Perez before the little one arrives.",
   foodNote: "🌮 Walking tacos will be served!",
   photoNote: "Share a photo of dad or from the party 📸",
+  startsAt: "2026-07-25T18:00:00"
 };
+
+function formatCountdown(targetDate) {
+  const now = new Date().getTime();
+  const target = new Date(targetDate).getTime();
+  const diff = target - now;
+
+  if (diff <= 0) return "It’s party time 🎉";
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+
+  return `${days}d ${hours}h ${minutes}m until party time`;
+}
 
 export default function App() {
   const [name, setName] = useState("");
@@ -42,6 +57,7 @@ export default function App() {
   const [loadingRsvps, setLoadingRsvps] = useState(false);
   const [loadingPool, setLoadingPool] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [countdown, setCountdown] = useState(formatCountdown(EVENT.startsAt));
 
   const showMessage = (text) => {
     setMessage(text);
@@ -89,7 +105,7 @@ export default function App() {
 
     const { data, error } = await supabase.storage.from(BUCKET).list("", {
       limit: 100,
-      sortBy: { column: "name", order: "desc" },
+      sortBy: { column: "name", order: "desc" }
     });
 
     if (error) {
@@ -117,7 +133,7 @@ export default function App() {
       return {
         id: file.id || file.name,
         name: file.name,
-        url: publicData.publicUrl,
+        url: publicData.publicUrl
       };
     });
 
@@ -131,6 +147,45 @@ export default function App() {
     loadPhotos();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCountdown(formatCountdown(EVENT.startsAt));
+    }, 60000);
+
+    setCountdown(formatCountdown(EVENT.startsAt));
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("live-party-updates")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "party_rsvps" },
+        () => {
+          loadRsvps();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "baby_pool_guesses" },
+        () => {
+          loadPoolGuesses();
+        }
+      )
+      .subscribe();
+
+    const galleryPoll = window.setInterval(() => {
+      loadPhotos();
+    }, 15000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(galleryPoll);
+    };
+  }, []);
+
   const submitRSVP = async () => {
     if (!name.trim()) {
       alert("Enter your name first.");
@@ -140,8 +195,8 @@ export default function App() {
     const { error } = await supabase.from("party_rsvps").insert([
       {
         name: name.trim(),
-        email: email.trim() || null,
-      },
+        email: email.trim() || null
+      }
     ]);
 
     if (error) {
@@ -152,7 +207,6 @@ export default function App() {
     setName("");
     setEmail("");
     showMessage("RSVP submitted 🔥");
-    loadRsvps();
   };
 
   const submitGuess = async () => {
@@ -170,8 +224,8 @@ export default function App() {
       {
         name: poolName.trim(),
         guess_date: guessDate,
-        guess_weight: guessWeight.trim() || null,
-      },
+        guess_weight: guessWeight.trim() || null
+      }
     ]);
 
     if (error) {
@@ -183,7 +237,6 @@ export default function App() {
     setGuessDate("");
     setGuessWeight("");
     showMessage("Baby pool guess submitted 👶");
-    loadPoolGuesses();
   };
 
   const uploadPhoto = async () => {
@@ -272,6 +325,13 @@ export default function App() {
           {EVENT.foodNote}
         </p>
 
+        <div className="stats-row" style={{ marginBottom: 18 }}>
+          <div className="stat-pill">
+            <span className="stat-label">Countdown</span>
+            <span className="stat-value">{countdown}</span>
+          </div>
+        </div>
+
         <div className="details-grid">
           <div className="info-box glow">
             <div className="info-label">Date &amp; Time</div>
@@ -298,10 +358,6 @@ export default function App() {
               {loadingRsvps ? "..." : totalRsvps}
             </span>
           </div>
-
-          <button className="secondary-btn refresh-btn" onClick={loadRsvps}>
-            Refresh Count
-          </button>
         </div>
       </div>
 
@@ -398,12 +454,9 @@ export default function App() {
       <div className="card shimmer leaderboard-card">
         <div className="leaderboard-header">
           <h2>Baby Pool Leaderboard</h2>
-          <button
-            className="secondary-btn refresh-btn"
-            onClick={loadPoolGuesses}
-          >
-            {loadingPool ? "Refreshing..." : "Refresh Pool"}
-          </button>
+          <div className="leaderboard-meta">
+            {loadingPool ? "Refreshing..." : "Live updates on"}
+          </div>
         </div>
 
         {!poolGuesses.length ? (
