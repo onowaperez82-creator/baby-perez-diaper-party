@@ -250,7 +250,7 @@ export default function App() {
         <div className="details-grid">
           <div className="info-box glow">
             <div className="info-label">Date &amp; Time</div>
-            <div className="info-value">Friday, July 10, 2026</div>
+            <div className="info-value">Saturday, July 25, 2026</div>
             <div className="info-value">7:00 PM</div>
           </div>
 
