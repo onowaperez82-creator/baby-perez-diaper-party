@@ -9,11 +9,26 @@ const supabase = createClient(
 
 const BUCKET = "party-photos";
 
+const EVENT = {
+  title: "Baby Perez Diaper Party",
+  subtitle: "Men only • Bring a pack of diapers • BYOB",
+  date: "Saturday, July 25, 2026",
+  time: "7:00 PM",
+  location: "23529 Tamarack St NW, St Francis, MN 55070",
+  mapsUrl:
+    "https://www.google.com/maps/search/?api=1&query=23529%20Tamarack%20St%20NW%2C%20St%20Francis%2C%20MN%2055070",
+  description:
+    "Come hang out, bring diapers, bring your own drinks, and help us celebrate Baby Perez before the little one gets here.",
+};
+
 export default function App() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
+  const [poolName, setPoolName] = useState("");
   const [guessDate, setGuessDate] = useState("");
   const [guessWeight, setGuessWeight] = useState("");
+
   const [photo, setPhoto] = useState(null);
 
   const [message, setMessage] = useState("");
@@ -33,6 +48,7 @@ export default function App() {
 
   const loadRsvps = async () => {
     setLoadingRsvps(true);
+
     const { data, error } = await supabase
       .from("party_rsvps")
       .select("*")
@@ -50,6 +66,7 @@ export default function App() {
 
   const loadPoolGuesses = async () => {
     setLoadingPool(true);
+
     const { data, error } = await supabase
       .from("baby_pool_guesses")
       .select("*")
@@ -137,6 +154,11 @@ export default function App() {
   };
 
   const submitGuess = async () => {
+    if (!poolName.trim()) {
+      alert("Enter your name for the baby pool.");
+      return;
+    }
+
     if (!guessDate) {
       alert("Pick a date guess first.");
       return;
@@ -144,7 +166,7 @@ export default function App() {
 
     const { error } = await supabase.from("baby_pool_guesses").insert([
       {
-        name: name.trim() || "Guest",
+        name: poolName.trim(),
         guess_date: guessDate,
         guess_weight: guessWeight.trim() || null,
       },
@@ -155,6 +177,7 @@ export default function App() {
       return;
     }
 
+    setPoolName("");
     setGuessDate("");
     setGuessWeight("");
     showMessage("Baby pool guess submitted 👶");
@@ -238,32 +261,27 @@ export default function App() {
       <div className="hero-card shimmer">
         <div className="badge">Hosted for Baby Perez</div>
 
-        <h1 className="headline">Baby Perez Diaper Party</h1>
+        <h1 className="headline">{EVENT.title}</h1>
 
-        <p className="subhead">Men only • Bring a pack of diapers • BYOB</p>
+        <p className="subhead">{EVENT.subtitle}</p>
 
-        <p className="description">
-          Come hang out, bring diapers, bring your own drinks, and help us
-          celebrate Baby Perez before the little one gets here.
-        </p>
+        <p className="description">{EVENT.description}</p>
 
         <div className="details-grid">
           <div className="info-box glow">
             <div className="info-label">Date &amp; Time</div>
-            <div className="info-value">Friday, July 10, 2026</div>
-            <div className="info-value">7:00 PM</div>
+            <div className="info-value">{EVENT.date}</div>
+            <div className="info-value">{EVENT.time}</div>
           </div>
 
           <a
             className="info-box glow location-link"
-            href="https://www.google.com/maps/search/?api=1&query=23529%20Tamarack%20St%20NW%2C%20St%20Francis%2C%20MN%2055070"
+            href={EVENT.mapsUrl}
             target="_blank"
             rel="noreferrer"
           >
             <div className="info-label">Location</div>
-            <div className="info-value">
-              23529 Tamarack St NW, St Francis, MN 55070
-            </div>
+            <div className="info-value">{EVENT.location}</div>
             <div className="tap-text">Tap to open in maps</div>
           </a>
         </div>
@@ -306,6 +324,12 @@ export default function App() {
 
         <div className="card shimmer">
           <h2>Baby Pool</h2>
+          <input
+            className="field"
+            placeholder="Your name"
+            value={poolName}
+            onChange={(e) => setPoolName(e.target.value)}
+          />
           <input
             className="field"
             type="date"
