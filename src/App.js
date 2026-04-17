@@ -7,6 +7,8 @@ const supabase = createClient(
   "sb_publishable_2fEX9SGp-_TI3H4mgiEivw_99BW4uqf"
 );
 
+const BUCKET = "party-photos";
+
 export default function App() {
   const [rsvpCount, setRsvpCount] = useState(0);
   const [guesses, setGuesses] = useState([]);
@@ -15,12 +17,99 @@ export default function App() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-
-  const [guessName, setGuessName] = useState("");
   const [guessDate, setGuessDate] = useState("");
   const [guessWeight, setGuessWeight] = useState("");
+  const [photo, setPhoto] = useState(null);
 
-  const [file, setFile] = useState(null);
+  const [message, setMessage] = useState("");
+  const [photos, setPhotos] = useState([]);
+  const [rsvps, setRsvps] = useState([]);
+  const [poolGuesses, setPoolGuesses] = useState([]);
+
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [loadingRsvps, setLoadingRsvps] = useState(false);
+  const [loadingPool, setLoadingPool] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
+  const showMessage = (text) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(""), 2500);
+  };
+
+  const loadRsvps = async () => {
+    setLoadingRsvps(true);
+    const { data, error } = await supabase
+      .from("party_rsvps")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      alert(error.message);
+      setLoadingRsvps(false);
+      return;
+    }
+
+    setRsvps(data || []);
+    setLoadingRsvps(false);
+  };
+
+  const loadPoolGuesses = async () => {
+    setLoadingPool(true);
+    const { data, error } = await supabase
+      .from("baby_pool_guesses")
+      .select("*")
+      .order("guess_date", { ascending: true });
+
+    if (error) {
+      alert(error.message);
+      setLoadingPool(false);
+      return;
+    }
+
+    setPoolGuesses(data || []);
+    setLoadingPool(false);
+  };
+
+  const loadPhotos = async () => {
+    setLoadingGallery(true);
+
+    const { data, error } = await supabase.storage.from(BUCKET).list("", {
+      limit: 100,
+      sortBy: { column: "name", order: "desc" },
+    });
+
+    if (error) {
+      alert(error.message);
+      setLoadingGallery(false);
+      return;
+    }
+
+    const imageFiles = (data || []).filter((file) => {
+      const lower = file.name.toLowerCase();
+      return (
+        lower.endsWith(".jpg") ||
+        lower.endsWith(".jpeg") ||
+        lower.endsWith(".png") ||
+        lower.endsWith(".webp") ||
+        lower.endsWith(".gif")
+      );
+    });
+
+    const mapped = imageFiles.map((file) => {
+      const { data: publicData } = supabase.storage
+        .from(BUCKET)
+        .getPublicUrl(file.name);
+
+      return {
+        id: file.id || file.name,
+        name: file.name,
+        url: publicData.publicUrl,
+      };
+    });
+
+    setPhotos(mapped);
+    setLoadingGallery(false);
+  };
 
   useEffect(() => {
     fetchRSVPs();
@@ -36,40 +125,42 @@ export default function App() {
     }
   }
 
-  async function fetchGuesses() {
-    const { data } = await supabase.from("baby_pool").select("*");
-    if (data) setGuesses(data);
-  }
+    const { error } = await supabase.from("party_rsvps").insert([
+      {
+        name: name.trim(),
+        email: email.trim() || null,
+      },
+    ]);
 
-  async function fetchPhotos() {
-    const { data } = supabase.storage.from("photos").getPublicUrl("");
-    const { data: list } = await supabase.storage.from("photos").list();
-    if (list) {
-      const urls = list.map(
-        (file) =>
-          `https://pwkqtiuqxlhxcrjmrmhe.supabase.co/storage/v1/object/public/photos/${file.name}`
-      );
-      setPhotos(urls);
+    if (error) {
+      alert(error.message);
+      return;
     }
-  }
 
-  async function submitRSVP() {
-    if (!name) return alert("Enter your name");
-
-    await supabase.from("rsvps").insert([{ name, email }]);
     setName("");
     setEmail("");
     fetchRSVPs();
   }
 
-  async function submitGuess() {
-    if (!guessName || !guessDate) return alert("Fill out required fields");
+  const submitGuess = async () => {
+    if (!guessDate) {
+      alert("Pick a date guess first.");
+      return;
+    }
 
-    await supabase
-      .from("baby_pool")
-      .insert([{ name: guessName, date: guessDate, weight: guessWeight }]);
+    const { error } = await supabase.from("baby_pool_guesses").insert([
+      {
+        name: name.trim() || "Guest",
+        guess_date: guessDate,
+        guess_weight: guessWeight.trim() || null,
+      },
+    ]);
 
-    setGuessName("");
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     setGuessDate("");
     setGuessWeight("");
     fetchGuesses();
@@ -90,28 +181,25 @@ export default function App() {
       <div className="card">
         <div className="badge">Hosted for Baby Perez</div>
 
-        <h1 className="headline">BABY PEREZ DIAPER PARTY</h1>
+        <h1 className="headline">Baby Perez Diaper Party</h1>
 
-        <p className="subhead">Bring a pack of diapers • 🍻 Keg Provided</p>
+        <p className="subhead">Men only • Bring a pack of diapers • BYOB</p>
 
         <p className="description">
-          Come hang out, bring diapers, enjoy drinks on us, and help us
-          celebrate Baby Perez before the little one arrives.
-          <br />
-          <br />
-          🌮 Walking tacos will be served!
+          Come hang out, bring diapers, bring your own drinks, and help us
+          celebrate Baby Perez before the little one gets here.
         </p>
 
         <div className="details-grid">
           <div className="info-box glow">
-            <div className="info-label">Date & Time</div>
-            <div className="info-value">Saturday, July 25, 2026</div>
-            <div className="info-value">6:00 PM</div>
+            <div className="info-label">Date &amp; Time</div>
+            <div className="info-value">Friday, July 10, 2026</div>
+            <div className="info-value">7:00 PM</div>
           </div>
 
           <a
             className="info-box glow location-link"
-            href="https://www.google.com/maps/search/?api=1&query=23529+Tamarack+St+NW,+St+Francis,+MN+55070"
+            href="https://www.google.com/maps/search/?api=1&query=23529%20Tamarack%20St%20NW%2C%20St%20Francis%2C%20MN%2055070"
             target="_blank"
             rel="noreferrer"
           >
@@ -119,7 +207,7 @@ export default function App() {
             <div className="info-value">
               23529 Tamarack St NW, St Francis, MN 55070
             </div>
-            <div className="info-sub">Tap to open in maps</div>
+            <div className="tap-text">Tap to open in maps</div>
           </a>
         </div>
 
@@ -157,14 +245,6 @@ export default function App() {
         {/* BABY POOL */}
         <div className="card">
           <h2>Baby Pool</h2>
-
-          <input
-            className="field"
-            placeholder="Your name"
-            value={guessName}
-            onChange={(e) => setGuessName(e.target.value)}
-          />
-
           <input
             className="field"
             type="date"
