@@ -1,0 +1,29 @@
+{
+  "name": "baby-perez-party",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Baby Perez Diaper Party App",
+  "keywords": [],
+  "main": "src/index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "jszip": "^3.10.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-scripts": "^5.0.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
